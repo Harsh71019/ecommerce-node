@@ -13,10 +13,6 @@ const imageSchema = new mongoose.Schema({
 
 const heroSchema = new mongoose.Schema(
   {
-    logo: {
-      type: String,
-      required: true,
-    },
     title: {
       type: String,
       required: true,
@@ -35,14 +31,6 @@ const heroSchema = new mongoose.Schema(
       required: true,
     },
     buttonLink: {
-      type: String,
-      required: true,
-    },
-    phoneNumber: {
-      type: String,
-      required: true,
-    },
-    emailAddress: {
       type: String,
       required: true,
     },
@@ -74,6 +62,10 @@ const frontPageSchema = new mongoose.Schema(
           type: String,
           required: true,
         },
+        url: {
+          type: String,
+          required: true,
+        },
       },
     ],
   },
@@ -84,6 +76,18 @@ const frontPageSchema = new mongoose.Schema(
 
 const settingsSchema = new mongoose.Schema(
   {
+    phoneNumber: {
+      type: String,
+      required: true,
+    },
+    emailAddress: {
+      type: String,
+      required: true,
+    },
+    logo: {
+      type: String,
+      required: true,
+    },
     hero: heroSchema,
     frontPage: frontPageSchema,
   },

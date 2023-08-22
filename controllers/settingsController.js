@@ -1,5 +1,6 @@
 import asyncHandler from 'express-async-handler';
 import Settings from '../models/settingsModel.js';
+
 // @desc    Get site settings
 // @route   GET /api/settings
 // @access  Public
@@ -22,6 +23,7 @@ const updateSettings = asyncHandler(async (req, res) => {
     buttonLink,
     phoneNumber,
     emailAddress,
+    socialMediaLinks, // Include social media links in the request body
     welcomeMessage,
     featuredProducts,
     testimonials,
@@ -43,6 +45,7 @@ const updateSettings = asyncHandler(async (req, res) => {
     buttonLink,
     phoneNumber,
     emailAddress,
+    socialMediaLinks, // Assign social media links to the hero section
   };
 
   settings.frontPage = {
