@@ -19,12 +19,28 @@ const createSupportTicket = asyncHandler(async (req, res) => {
   res.status(201).json(createdTicket);
 });
 
-// @desc    Get all support tickets (admin only)
-// @route   GET /api/support
+// @desc    Get all support tickets with pagination
+// @route   GET /api/support-tickets
 // @access  Private/Admin
 const getAllSupportTickets = asyncHandler(async (req, res) => {
-  const tickets = await SupportTicket.find().populate('customer', 'name email');
-  res.json(tickets);
+  const page = parseInt(req.query.page) || 1;
+  const pageSize = parseInt(req.query.pageSize) || 10;
+
+  const totalSupportTickets = await SupportTicket.countDocuments({});
+  const totalPages = Math.ceil(totalSupportTickets / pageSize);
+
+  const tickets = await SupportTicket.find({})
+    .skip((page - 1) * pageSize)
+    .limit(pageSize)
+    .populate('customer', 'name email');
+
+  res.json({
+    tickets,
+    page,
+    pageSize,
+    totalSupportTickets,
+    totalPages,
+  });
 });
 
 // @desc    Get support ticket by ID

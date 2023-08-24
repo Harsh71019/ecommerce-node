@@ -8,6 +8,8 @@ import {
   addProductReview,
   updateProductReview,
   deleteProductReview,
+  getDetailedAnalytics,
+  getLowStockProducts,
 } from '../controllers/productController.js';
 import { protect, admin } from '../middleware/authMiddleware.js';
 
@@ -29,5 +31,7 @@ router
   .route('/:id/reviews/:reviewId')
   .put(protect, updateProductReview)
   .delete(protect, deleteProductReview);
+router.get('/analytics/details', protect, admin, getDetailedAnalytics);
+router.get('/api/products/lowstock', protect, admin, getLowStockProducts);
 
 export default router;

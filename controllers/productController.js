@@ -87,18 +87,11 @@ const createProduct = asyncHandler(async (req, res) => {
 //@desc Get all products
 //@route GET /api/products
 // @access Public
-// @desc    Get all products with pagination and filters
-// @route   GET /api/products
-// @access  Public
-//@desc Get all products
-//@route GET /api/products
-// @access Public
 
 const getProducts = asyncHandler(async (req, res) => {
-  const pageSize = 10; // Number of products per page
-  const page = Number(req.query.page) || 1; // Current page number
+  const pageSize = parseInt(req.query.pageSize) || 10;
+  const page = parseInt(req.query.page) || 1;
 
-  // Filters (if any)
   const filters = {};
   if (req.query.category) {
     filters.category = req.query.category;
@@ -106,7 +99,6 @@ const getProducts = asyncHandler(async (req, res) => {
   if (req.query.brand) {
     filters.brand = req.query.brand;
   }
-  // Filter by price range
   if (req.query.minPrice || req.query.maxPrice) {
     filters.price = {};
     if (req.query.minPrice) {
@@ -116,23 +108,21 @@ const getProducts = asyncHandler(async (req, res) => {
       filters.price.$lte = parseFloat(req.query.maxPrice);
     }
   }
-  // Filter by discount
   if (req.query.minDiscount) {
     filters.discount = { $gte: parseFloat(req.query.minDiscount) };
   }
-  // Add more filters as needed
+
+  if (req.query.search) {
+    filters.$or = [{ name: { $regex: req.query.search, $options: 'i' } }];
+  }
 
   // Role-based adjustments
   if (req.user && req.user.isAdmin) {
-    // Admin-specific filters or data retrieval (if any)
   } else {
-    // User-specific filters or data retrieval (if any)
   }
 
-  // Count total number of products with applied filters
   const count = await Product.countDocuments(filters);
 
-  // Fetch products with pagination and applied filters
   const products = await Product.find(filters)
     .limit(pageSize)
     .skip(pageSize * (page - 1));
@@ -364,6 +354,61 @@ const deleteProductReview = asyncHandler(async (req, res) => {
     res.status(404).json({ message: 'Product not found' });
   }
 });
+//@desc Get detailed analytics for products
+//@route GET /api/products/analytics/details
+// @access Private/Admin
+const getDetailedAnalytics = asyncHandler(async (req, res) => {
+  try {
+    const totalProducts = await Product.countDocuments();
+    const totalDiscountedProducts = await Product.countDocuments({
+      discountPercentage: { $gt: 0 },
+    });
+    const totalCategories = await Product.distinct('category').countDocuments();
+    const totalBrands = await Product.distinct('brand').countDocuments();
+
+    const categoryDistribution = await Product.aggregate([
+      {
+        $group: {
+          _id: '$category',
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const brandDistribution = await Product.aggregate([
+      {
+        $group: {
+          _id: '$brand',
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    res.json({
+      totalProducts,
+      totalDiscountedProducts,
+      totalCategories,
+      totalBrands,
+      categoryDistribution,
+      brandDistribution,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json('Something went wrong');
+  }
+});
+
+const getLowStockProducts = asyncHandler(async (req, res) => {
+  try {
+    const lowStockThreshold = 10; // Set your low stock threshold here
+    const lowStockProducts = await Product.find({
+      countInStock: { $lt: lowStockThreshold },
+    });
+    res.json(lowStockProducts);
+  } catch (error) {
+    res.status(500).json('Something went wrong');
+  }
+});
 
 export {
   createProduct,
@@ -374,4 +419,6 @@ export {
   addProductReview,
   updateProductReview,
   deleteProductReview,
+  getDetailedAnalytics,
+  getLowStockProducts,
 };

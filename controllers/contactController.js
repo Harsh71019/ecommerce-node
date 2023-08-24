@@ -20,12 +20,27 @@ const createContactMessage = asyncHandler(async (req, res) => {
   res.status(201).json(createdMessage);
 });
 
-// @desc    Get all contact messages
+// @desc    Get all contact messages with pagination
 // @route   GET /api/contact
 // @access  Private/Admin
 const getAllContactMessages = asyncHandler(async (req, res) => {
-  const contactMessages = await ContactUs.find({});
-  res.json(contactMessages);
+  const page = parseInt(req.query.page) || 1;
+  const pageSize = parseInt(req.query.pageSize) || 10;
+
+  const totalContactMessages = await ContactUs.countDocuments({});
+  const totalPages = Math.ceil(totalContactMessages / pageSize);
+
+  const contactMessages = await ContactUs.find({})
+    .skip((page - 1) * pageSize)
+    .limit(pageSize);
+
+  res.json({
+    contactMessages,
+    page,
+    pageSize,
+    totalContactMessages,
+    totalPages,
+  });
 });
 
 // @desc    Get a contact message by ID

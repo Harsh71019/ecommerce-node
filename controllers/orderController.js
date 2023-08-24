@@ -72,12 +72,43 @@ const updateTransitStatus = asyncHandler(async (req, res) => {
   }
 });
 
-// @desc    Get all orders (admin)
-// @route   GET /api/orders
-// @access  Private/Admin
+//@desc Get all orders with pagination and search
+//@route GET /api/orders
+// @access Private/Admin
 const getAllOrders = asyncHandler(async (req, res) => {
-  const orders = await Order.find({}).populate('user', 'id name');
-  res.json(orders);
+  const page = parseInt(req.query.page) || 1;
+  const pageSize = parseInt(req.query.pageSize) || 10;
+  const searchQuery = req.query.search || '';
+  const statusFilter = req.query.status || '';
+
+  const query = {};
+
+  if (searchQuery) {
+    query.$or = [
+      { orderId: { $regex: searchQuery, $options: 'i' } },
+      // Add more fields for search if needed
+    ];
+  }
+
+  if (statusFilter) {
+    query.status = statusFilter;
+  }
+
+  const totalOrders = await Order.countDocuments(query);
+  const totalPages = Math.ceil(totalOrders / pageSize);
+
+  const orders = await Order.find(query)
+    .skip((page - 1) * pageSize)
+    .limit(pageSize)
+    .populate('user', 'id name');
+
+  res.json({
+    orders,
+    page,
+    pageSize,
+    totalOrders,
+    totalPages,
+  });
 });
 
 // @desc    Update order status to delivered
@@ -98,12 +129,87 @@ const markOrderAsDelivered = asyncHandler(async (req, res) => {
   }
 });
 
-// @desc    Get orders for a specific user
+// @desc    Get orders for a specific user with pagination and search
 // @route   GET /api/orders/myorders
 // @access  Private
 const getMyOrders = asyncHandler(async (req, res) => {
-  const orders = await Order.find({ user: req.user._id });
-  res.json(orders);
+  const page = parseInt(req.query.page) || 1;
+  const pageSize = parseInt(req.query.pageSize) || 10;
+  const searchQuery = req.query.search || '';
+
+  const query = {
+    user: req.user._id,
+  };
+
+  if (searchQuery) {
+    query.$or = [
+      { orderId: { $regex: searchQuery, $options: 'i' } },
+      // Add more fields for search if needed
+    ];
+  }
+
+  const totalOrders = await Order.countDocuments(query);
+  const totalPages = Math.ceil(totalOrders / pageSize);
+
+  const orders = await Order.find(query)
+    .skip((page - 1) * pageSize)
+    .limit(pageSize);
+
+  res.json({
+    orders,
+    page,
+    pageSize,
+    totalOrders,
+    totalPages,
+  });
+});
+
+const getDetailedAnalytics = asyncHandler(async (req, res) => {
+  const orders = await Order.find({});
+
+  // Calculate total revenue
+  const totalRevenue = orders.reduce(
+    (total, order) => total + order.totalPrice,
+    0
+  );
+
+  // Calculate average order value
+  const averageOrderValue = totalRevenue / orders.length || 0;
+
+  // Create a product map to count product occurrences
+  const productMap = new Map();
+  orders.forEach((order) => {
+    order.orderItems.forEach((item) => {
+      const productId = item.product.toString();
+      if (productMap.has(productId)) {
+        productMap.set(productId, productMap.get(productId) + 1);
+      } else {
+        productMap.set(productId, 1);
+      }
+    });
+  });
+
+  // Find the most popular product
+  let mostPopularProduct = null;
+  let maxOccurrence = 0;
+  for (const [productId, occurrence] of productMap) {
+    if (occurrence > maxOccurrence) {
+      maxOccurrence = occurrence;
+      mostPopularProduct = productId;
+    }
+  }
+
+  // Fetch the product details for the most popular product
+  const popularProduct = await Product.findById(mostPopularProduct);
+
+  const analytics = {
+    totalOrders: orders.length,
+    totalRevenue,
+    averageOrderValue,
+    mostPopularProduct: popularProduct ? popularProduct.name : 'N/A',
+  };
+
+  res.json(analytics);
 });
 
 export {
@@ -113,4 +219,5 @@ export {
   getAllOrders,
   markOrderAsDelivered,
   getMyOrders,
+  getDetailedAnalytics,
 };

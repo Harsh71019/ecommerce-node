@@ -151,13 +151,39 @@ const updateUserProfile = asyncHandler(async (req, res) => {
   });
 });
 
-//@desc Get all users
+//@desc Get all users with pagination and search
 //@route GET /api/users
 // @access Private/Admin
 const getUsers = asyncHandler(async (req, res) => {
   requestLogger(req, res, async () => {
-    const users = await User.find({});
-    res.json(users);
+    const page = parseInt(req.query.page) || 1;
+    const pageSize = parseInt(req.query.pageSize) || 10;
+    const searchQuery = req.query.search || '';
+
+    const query = {};
+
+    if (searchQuery) {
+      query.$or = [
+        { name: { $regex: searchQuery, $options: 'i' } },
+        { email: { $regex: searchQuery, $options: 'i' } },
+        // Add more fields for search if needed
+      ];
+    }
+
+    const totalUsers = await User.countDocuments(query);
+    const totalPages = Math.ceil(totalUsers / pageSize);
+
+    const users = await User.find(query)
+      .skip((page - 1) * pageSize)
+      .limit(pageSize);
+
+    res.json({
+      users,
+      page,
+      pageSize,
+      totalUsers,
+      totalPages,
+    });
   });
 });
 
